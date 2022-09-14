@@ -131,7 +131,7 @@ class C51agent:
             Q = Q * torch.tensor(self.Z, dtype=torch.float32)
             Q = torch.squeeze(Q, 0)
             Q = Q.sum(dim=1)
-        return Q.argmax()
+        return rand_argmax(Q)
 
     def get_iql_action(self, state):
         rand = torch.rand(1)
@@ -144,7 +144,7 @@ class C51agent:
         with torch.no_grad():
             Q = self.Q(state)
             Q.squeeze(dim=0)
-            return Q.argmax()
+            return rand_argmax(Q)
 
     def get_action(self, state):
         rand = torch.rand(1)
@@ -387,7 +387,7 @@ class C51agent:
             Q = torch.squeeze(Q, 0)
             Q = Q * torch.tensor(self.Z, dtype=torch.float32)
             Q = Q.sum(dim=1)
-            action = Q.argmax()
+            action = rand_argmax(Q)
             if verbose:
                 print("agent {} q-table is {}, choose action {}".format(self.idx, Q, action))
         return action
@@ -402,13 +402,13 @@ class C51agent:
             # print("Q is : {}".format((Q * torch.tensor(self.Z)).sum(dim=1)))
             for i in range(self.N - 1, 0, -1):
                 cdf[:, i - 1] += cdf[:, i]
-            act_val = np.zeros([self.n_actions], dtype=float)
+            act_val = torch.zeros([self.n_actions], dtype=torch.float32)
             for action in range(self.n_actions):
                 for i in range(self.N - 1, 0, -1):
                     if cdf[action][i] >= 1 - self.ucb:
                         act_val[action] = self.Z[i]
                         break
-            action = act_val.argmax()
+            action = rand_argmax(act_val)
         return action
 
     def get_opt_method3_action(self, state):
@@ -421,7 +421,7 @@ class C51agent:
             # print("Q is : {}".format((Q * torch.tensor(self.Z)).sum(dim=1)))
             for i in range(self.N - 1, 0, -1):
                 cdf[:, i - 1] += cdf[:, i]
-            act_val = np.zeros([self.n_actions], dtype=float)
+            act_val = torch.zeros([self.n_actions], dtype=torch.float32)
             for action in range(self.n_actions):
                 for i in range(self.N - 1, 0, -1):
                     if cdf[action][i] >= 1 - self.ucb:
@@ -430,9 +430,8 @@ class C51agent:
             # print(Q.shape)
             Q = Q * torch.tensor(self.Z, dtype=torch.float32)
             Q = Q.sum(dim=1)
-            Q = Q.numpy()
             act_val += Q
-            action = act_val.argmax()
+            action = rand_argmax(act_val)
         return action
 
     def test_ucb_opt_action(self, state, verbose, ucb):
@@ -448,13 +447,13 @@ class C51agent:
             # print("Q is : {}".format((Q * torch.tensor(self.Z)).sum(dim=1)))
             for i in range(self.N - 1, 0, -1):
                 cdf[:, i - 1] += cdf[:, i]
-            act_val = np.zeros([self.n_actions], dtype=float)
+            act_val = torch.zeros([self.n_actions], dtype=torch.float32)
             for action in range(self.n_actions):
                 for i in range(self.N - 1, 0, -1):
                     if cdf[action][i] >= 1 - self.ucb:
                         act_val[action] = self.Z[i]
                         break
-            action = act_val.argmax()
+            action = rand_argmax(act_val)
             # print(cdf)
             if verbose:
                 print("agent {} q-table(ucb) is {}, choose action {}".format(self.idx, act_val, action))
@@ -835,7 +834,7 @@ def train():
                 tabel_lr *= 0.99
             while True:
                 if args.overlap:
-                    if i < 2500 or i > 10000:
+                    if i < 2500:
                         a = multi_c51.get_joint_action(s)  # 根据dqn来接受现在的状态，得到一个行为\
                     else:
                         a = multi_c51.get_joint_iql_action(s)
