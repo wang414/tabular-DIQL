@@ -1,0 +1,7 @@
+DP:
+
+python random_matrix_game.py --aga_tag True --map random_matrix_game_3  --dp_test dp_optimal --seed 1 --special_name rdstart
+
+iql:
+
+python random_matrix_game.py  --map random_matrix_game_3 --aga_one_step_update True  --dp_test tabular --special_name rdstart --epsilon 0.33 --min_epsilon 0.33

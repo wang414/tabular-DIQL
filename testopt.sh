@@ -1,0 +1,11 @@
+python ./c51.py --randstart --episode 10000 --path optmethod4 --modelname ucb0.8weight0 --method4 --ucb 0.8 --weight 0 --samplenum 10 --Lr 0.1
+python ./c51.py --randstart --episode 10000 --path optmethod4 --modelname ucb0.8weight0.1 --method4 --ucb 0.8 --weight 0.1 --samplenum 10 --Lr 0.1
+python ./c51.py --randstart --episode 10000 --path optmethod4 --modelname ucb0.8weight0.2 --method4 --ucb 0.8 --weight 0.2 --samplenum 10 --Lr 0.1
+python ./c51.py --randstart --episode 10000 --path optmethod4 --modelname ucb0.8weight0.3 --method4 --ucb 0.8 --weight 0.3 --samplenum 10 --Lr 0.1
+python ./c51.py --randstart --episode 10000 --path optmethod4 --modelname ucb0.8weight0.4 --method4 --ucb 0.8 --weight 0.4 --samplenum 10 --Lr 0.1
+python ./c51.py --randstart --episode 10000 --path optmethod4 --modelname ucb0.8weight0.5 --method4 --ucb 0.8 --weight 0.5 --samplenum 10 --Lr 0.1
+python ./c51.py --randstart --episode 10000 --path optmethod4 --modelname ucb0.8weight0.6 --method4 --ucb 0.8 --weight 0.6 --samplenum 10 --Lr 0.1
+python ./c51.py --randstart --episode 10000 --path optmethod4 --modelname ucb0.8weight0.7 --method4 --ucb 0.8 --weight 0.7 --samplenum 10 --Lr 0.1
+python ./c51.py --randstart --episode 10000 --path optmethod4 --modelname ucb0.8weight0.8 --method4 --ucb 0.8 --weight 0.8 --samplenum 10 --Lr 0.1
+python ./c51.py --randstart --episode 10000 --path optmethod4 --modelname ucb0.8weight0.9 --method4 --ucb 0.8 --weight 0.9 --samplenum 10 --Lr 0.1
+python ./c51.py --randstart --episode 10000 --path optmethod4 --modelname ucb0.8weight1.0 --method4 --ucb 0.8 --weight 1.0 --samplenum 10 --Lr 0.1
