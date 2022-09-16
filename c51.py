@@ -27,7 +27,7 @@ parser.add_argument("--vmin", type=int, default=-5, help="set the vmin")
 parser.add_argument("--N", type=int, default=51, help="set the numbers of the atoms")
 parser.add_argument("--eps", type=float, default=0.33, help="set the epsilon")
 parser.add_argument("--gamma", type=float, default=0.99, help="set the gamma")
-parser.add_argument("--Lr", type=float, default=0.5, help="set the learning rate")
+parser.add_argument("--Lr", type=float, default=0.1, help="set the learning rate")
 parser.add_argument("--cap", type=int, default=20000, help="the capability of the memory buffer")
 parser.add_argument("--step", type=int, default=100, help="the frequency of training")
 parser.add_argument("--freq", type=int, default=100, help="the frequency of update the model")
@@ -232,7 +232,7 @@ class C51agent:
         m_prob = torch.FloatTensor(m_prob)
         # print("{} {}".format(m_prob.shape, (-torch.log(z_eval + 1e-8)).shape))
         loss = m_prob * (-torch.log(z_eval + 1e-6))
-        loss = torch.sum(loss)
+        loss = torch.mean(loss)
         self.optimizer.zero_grad()
         #  loss.backward(retain_graph=True)  # 误差反向传播
         loss.backward()
@@ -834,12 +834,12 @@ def train():
                 tabel_lr *= 0.99
             while True:
                 if args.overlap:
-                    if i < 2500:
+                    if i < 2000:
                         a = multi_c51.get_joint_action(s)  # 根据dqn来接受现在的状态，得到一个行为\
                     else:
                         a = multi_c51.get_joint_iql_action(s)
                 else:
-                    if i < 2500:
+                    if i < 2000:
                         a = multi_c51.get_joint_action(s)  # 根据dqn来接受现在的状态，得到一个行为\
                     else:
                         a = multi_c51.get_joint_iql_action(s)
