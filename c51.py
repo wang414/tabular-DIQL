@@ -42,6 +42,7 @@ parser.add_argument("--network", action='store_true', default=False)
 parser.add_argument("--weight", type=float, default=0.5)
 parser.add_argument("--samplenum", type=int, default=10)
 parser.add_argument("--overlap", action='store_true', default=False)
+parser.add_argument("--determine", default=False, action='store_true')
 
 
 args = parser.parse_args()
@@ -604,7 +605,7 @@ class Multi_C51:
 
 
 def test(multi_c51, verbose):
-    env = Env.chooce_the_game(args.dataset, args.randstart)
+    env = Env.chooce_the_game(args.dataset, args.randstart, args.determine)
     return_list = []
     R1 = []
     if verbose:
@@ -712,7 +713,7 @@ def train():
     while os.path.exists(os.path.join(Folder, 'run{}'.format(run_num))):
         run_num += 1
     os.makedirs(os.path.join(Folder, 'run{}'.format(run_num)))
-    env = Env.chooce_the_game(args.dataset, args.randstart)
+    env = Env.chooce_the_game(args.dataset, args.randstart, args.determine)
     multi_c51 = Multi_C51(n_agents=env.agent_num, ucb=args.ucb, n_states=env.state_num, n_actions=env.action_num,
                           N=args.N, v_min=args.vmin, v_max=args.vmax, utf=args.freq, eps=args.eps, gamma=args.gamma,
                           max_memory=args.cap, alpha=args.Lr, batch_size=args.batchsize, model_name=args.modelname)
@@ -731,11 +732,14 @@ def train():
     flag = False
     q_judge = 0
     global tabel_lr
+    cb = 17.5
+    if args.determine:
+        cb = 18.5
     if args.iql:
         pi_prev = multi_c51.generate_pi_iql()
         for i in range(max_episode):
             s = env.reset()
-            if i > 2000 and val_list[-1] >= 17.5:
+            if i > 2000 and val_list[-1] >= cb:
                 tabel_lr *= 0.99
             while True:
                 a = multi_c51.get_joint_iql_action(s)  # 根据dqn来接受现在的状态，得到一个行为
@@ -795,7 +799,7 @@ def train():
                     r_list.append(total)
                 ep_r /= test_num
                 print('iql mean reward is {}\nreward:{}'.format(ep_r, r_list))
-                s = 'iql mean reward is {}\n'.format(ep_r)
+                s = 'iql mean reward is {}\nr_list:{}'.format(ep_r, r_list)
                 print('pi_judge is :{}'.format(pi_judge))
                 s += 'pi_judge is :{}\n'.format(pi_judge)
                 pi_judge_list.append(pi_judge)
@@ -823,14 +827,14 @@ def train():
                 axes = plt.subplot(2, 2, 4)
                 axes.set_title('pi_judge')
                 plt.plot(iter_list, pi_judge_list, label='pi_judge')
-                plt.savefig(Folder + '/result')
+                plt.savefig(Folder + '/result_run{}'.format(run_num))
                 plt.close()
     elif args.method4:
         pi_prev = multi_c51.generate_pi_iql()
         val_list1 = []
         for i in range(max_episode):
             s = env.reset()
-            if i > 2000 and val_list1[-1] >= 17.5:
+            if i > 2000 and val_list1[-1] >= cb:
                 tabel_lr *= 0.99
             while True:
                 if args.overlap:
@@ -911,7 +915,7 @@ def train():
                     r_list1.append(total)
                 ep_r /= test_num
                 print('iql mean reward is {}\nreward:{}'.format(ep_r, r_list1))
-                s = 'iql mean reward is {}\n'.format(ep_r)
+                s = 'iql mean reward is {}\nreward:{}'.format(ep_r, r_list1)
                 print('pi_judge is :{}'.format(pi_judge))
                 s += 'pi_judge is :{}\n'.format(pi_judge)
                 pi_judge_list.append(pi_judge)
@@ -1022,7 +1026,7 @@ def train():
                 for j in range(len(r_list)):
                     if j == 0:
                         continue
-                    with open('{}/c51_ucb{}_val_run{}.pkl'.format(Folder, ucb_list[j - 1]), 'wb') as f:
+                    with open('{}/c51_ucb{}_val_run{}.pkl'.format(Folder, ucb_list[j - 1], run_num), 'wb') as f:
                         pickle.dump(val_list[j], f)
                 plt.figure(figsize=(16, 16))
                 axes = plt.subplot(2, 2, 3)
@@ -1039,11 +1043,11 @@ def train():
                         plt.plot(iter_list, val_list[idx], label='ucb{}'.format(ucb_list[idx - 1]))
                 axes.set_title('total mean reward')
                 plt.legend()
-                plt.savefig('{}/result'.format(Folder))
+                plt.savefig('{}/result_run{}'.format(Folder,run_num))
 
 
 def test_agent():
-    env = Env.chooce_the_game(args.dataset, args.randstart)
+    env = Env.chooce_the_game(args.dataset, args.randstart, args.determine)
     multi_c51 = Multi_C51(n_agents=env.agent_num, ucb=args.ucb, n_states=env.state_num, n_actions=env.action_num,
                           N=args.N, v_min=args.vmin, v_max=args.vmax, utf=args.freq, eps=args.eps, gamma=args.gamma,
                           max_memory=args.cap, alpha=args.Lr, batch_size=args.batchsize, model_name=args.modelname)

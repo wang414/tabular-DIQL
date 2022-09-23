@@ -59,6 +59,13 @@ class MatrixGame:
         self.traverse = 0
         self.abs_traverse = 0
         self.relative_traverse = 0
+    def make_determine_env(self):
+        max_arg = self.trans_mat.argmax(axis=-1)
+        max_arg = np.expand_dims(max_arg, axis=-1)
+        mat = np.ones_like(self.trans_mat)
+        mat = mat * np.arange(self.state_num).astype(int)
+        mat = (max_arg[: None] == mat).astype(float)
+        self.trans_mat = mat
     def eval_traverse(self):
         # print('state_action_count = {}'.format(self.state_action_count))
         print('long_step_count = {}'.format(self.long_step_count))
@@ -256,6 +263,7 @@ if __name__ == '__main__':
         env = make_mat_game_one()
     else:
         env = make_mat_game_from_file('{}.pkl'.format(args.map))
+    env.make_determine_env()
     env_info = env.get_env_info()
     print('env_info = {}'.format(env_info))
     args.n_actions = env_info["n_actions"]
@@ -444,6 +452,7 @@ if __name__ == '__main__':
 
 
     elif args.dp_test == 'dp_optimal':
+        print(env.trans_mat)
         n_actions = args.n_actions
         n_agents = args.n_agents
         n_states = args.state_shape

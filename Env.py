@@ -3,13 +3,13 @@ import pickle
 import random
 
 
-def chooce_the_game(number, randstart):
+def chooce_the_game(number, randstart, determine):
     paths = ["a_mat_model/random_matrix_game_3.pkl", "a_mat_model/random_matrix_game_single.pkl",
              "a_mat_model/random_matrix_game_single_big.pkl", "a_mat_model/random_matrix_game_single_big_2.pkl"]
-    return make_mat_game_from_file(paths[number], randstart)
+    return make_mat_game_from_file(paths[number], randstart, determine)
 
 
-def make_mat_game_from_file(filename, randstart):
+def make_mat_game_from_file(filename, randstart, determine):
     with open(filename, 'rb') as f:
         matrix_para = pickle.load(f)
         r_mat = matrix_para['reward']
@@ -21,6 +21,8 @@ def make_mat_game_from_file(filename, randstart):
         init_state = 0
         env = MatrixGame(r_mat, trans_mat, init_state, end_state, max_episode_length, evaluate_mat=True,
                          random_start=randstart)
+        if determine:
+            env.make_determine_env()
         return env
 
 
@@ -109,9 +111,16 @@ class MatrixGame:
         # print('action = {} sa_index = {} self.trans_mat = {} next_s_prob = {}'.format(action,sa_index,self.trans_mat.shape, next_s_prob.shape  ))
         return r,next_s_prob
 
+    def make_determine_env(self):
+        max_arg = self.trans_mat.argmax(axis=-1)
+        max_arg = np.expand_dims(max_arg, axis=-1)
+        mat = np.ones_like(self.trans_mat)
+        mat = mat * np.arange(self.state_num).astype(int)
+        mat = (max_arg[: None] == mat).astype(float)
+        self.trans_mat = mat
 
 if __name__ == '__main__':
-    env = chooce_the_game(0, True)
-    print(env.r_mat.mean())
+    env = chooce_the_game(0, True, True)
+    # env.make_determine_env()
     # print(np.min(env.r_mat))
     print(env.state_num, env.agent_num, env.action_num)
