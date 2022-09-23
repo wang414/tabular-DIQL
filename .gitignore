@@ -1,1 +1,4 @@
 logs/
+.idea/
+.vscode/
+__pycache__
