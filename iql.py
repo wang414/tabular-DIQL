@@ -94,41 +94,6 @@ class Agent:
     def update_target_model(self):
         self.target_Q.load_state_dict(self.Q.state_dict())
 
-    def train_replay_iql(self, memory, batch_size):
-        num_samples = min(batch_size, len(memory))
-        replay_samples = random.sample(memory, num_samples)
-        # Project Next State Value Distribution (of optimal action) to Current State
-        b_s = [sample['s'] for sample in replay_samples]
-        b_r = [sample['r'] for sample in replay_samples]
-        b_a = [sample['a'] for sample in replay_samples]
-        b_s_ = [sample['s_'] for sample in replay_samples]
-        b_s = np.array(b_s)
-        b_r = np.array(b_r)
-        b_s_ = np.array(b_s_)
-        b_a = torch.LongTensor(b_a)
-        b_a = b_a[:, self.idx].unsqueeze(1)
-        # print('{} {}'.format(self.Q(b_s).shape, b_a[:, self.idx].unsqueeze(1).shape))
-        q_eval = self.Q(b_s).gather(1, b_a)  # shape (batch, 1)
-
-        # print('original:\n{}\n chosen:\n{}\n index:\n{}'.format(self.Q(b_s), q_eval, b_a[:, self.idx]))
-        # print("q_eval shape {}".format(q_eval.dtype))
-        q_next = self.Q(b_s_).detach()  # q_next 不进行反向传递误差, 所以 detach
-        a_next = q_next.argmax(dim=-1,keepdim=True)
-        q_next = self.target_Q(b_s_).detach().gather(1, a_next)
-
-        b_r = torch.from_numpy(b_r).type(torch.float32)
-        q_target = b_r + self.gamma * q_next  # shape (batch)
-        # q_target = q_target[:, None]
-        # print("q_target:{}".format(q_target))
-        loss = F.mse_loss(q_eval, q_target)
-        # print(loss)
-        # 计算, 更新 eval net
-        Q_prev = self.Q.Linear.weight.clone().detach()
-        self.optimizer_Q.zero_grad()
-        loss.backward()  # 误差反向传播
-        self.optimizer_Q.step()
-        Q_new = self.Q.Linear.weight.clone().detach()
-        return F.l1_loss(Q_prev, Q_new)
     # def train_replay_iql(self, memory, batch_size):
     #     num_samples = min(batch_size, len(memory))
     #     replay_samples = random.sample(memory, num_samples)
@@ -147,15 +112,14 @@ class Agent:
 
     #     # print('original:\n{}\n chosen:\n{}\n index:\n{}'.format(self.Q(b_s), q_eval, b_a[:, self.idx]))
     #     # print("q_eval shape {}".format(q_eval.dtype))
-    #     q_next = self.target_Q(b_s_).detach()  # q_next 不进行反向传递误差, 所以 detach
+    #     q_next = self.Q(b_s_).detach()  # q_next 不进行反向传递误差, 所以 detach
+    #     a_next = q_next.argmax(dim=-1,keepdim=True)
+    #     q_next = self.target_Q(b_s_).detach().gather(1, a_next)
+
     #     b_r = torch.from_numpy(b_r).type(torch.float32)
-    #     q_target = b_r + self.gamma * q_next.max(1)[0]  # shape (batch)
-    #     q_target = q_target[:, None]
+    #     q_target = b_r + self.gamma * q_next  # shape (batch)
+    #     # q_target = q_target[:, None]
     #     # print("q_target:{}".format(q_target))
-    #     """
-    #     print(q_target)
-    #     print(q_next)
-    #     """
     #     loss = F.mse_loss(q_eval, q_target)
     #     # print(loss)
     #     # 计算, 更新 eval net
@@ -165,6 +129,43 @@ class Agent:
     #     self.optimizer_Q.step()
     #     Q_new = self.Q.Linear.weight.clone().detach()
     #     return F.l1_loss(Q_prev, Q_new)
+    
+    def train_replay_iql(self, memory, batch_size):
+        num_samples = min(batch_size, len(memory))
+        replay_samples = random.sample(memory, num_samples)
+        # Project Next State Value Distribution (of optimal action) to Current State
+        b_s = [sample['s'] for sample in replay_samples]
+        b_r = [sample['r'] for sample in replay_samples]
+        b_a = [sample['a'] for sample in replay_samples]
+        b_s_ = [sample['s_'] for sample in replay_samples]
+        b_s = np.array(b_s)
+        b_r = np.array(b_r)
+        b_s_ = np.array(b_s_)
+        b_a = torch.LongTensor(b_a)
+        b_a = b_a[:, self.idx].unsqueeze(1)
+        # print('{} {}'.format(self.Q(b_s).shape, b_a[:, self.idx].unsqueeze(1).shape))
+        q_eval = self.Q(b_s).gather(1, b_a)  # shape (batch, 1)
+
+        # print('original:\n{}\n chosen:\n{}\n index:\n{}'.format(self.Q(b_s), q_eval, b_a[:, self.idx]))
+        # print("q_eval shape {}".format(q_eval.dtype))
+        q_next = self.target_Q(b_s_).detach()  # q_next 不进行反向传递误差, 所以 detach
+        b_r = torch.from_numpy(b_r).type(torch.float32)
+        q_target = b_r + self.gamma * q_next.max(1)[0]  # shape (batch)
+        q_target = q_target[:, None]
+        # print("q_target:{}".format(q_target))
+        """
+        print(q_target)
+        print(q_next)
+        """
+        loss = F.mse_loss(q_eval, q_target)
+        # print(loss)
+        # 计算, 更新 eval net
+        Q_prev = self.Q.Linear.weight.clone().detach()
+        self.optimizer_Q.zero_grad()
+        loss.backward()  # 误差反向传播
+        self.optimizer_Q.step()
+        Q_new = self.Q.Linear.weight.clone().detach()
+        return F.l1_loss(Q_prev, Q_new)
 
     def rand_peek(self):
         x = np.zeros([self.n_states])
