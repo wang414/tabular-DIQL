@@ -32,7 +32,7 @@ parser.add_argument("--ucb", type=int, default=60, help="set the upper confidenc
 parser.add_argument("--verbose", action='store_true', default=False, help="print verbose test process")
 parser.add_argument("--GPU", action="store_true", default=False, help="use cuda core")
 parser.add_argument("--batchsize", type=int, default=100, help="learning batchsize")
-parser.add_argument("--randstart", action='store_true', default=False, help="random start from any state")
+parser.add_argument("--randstart", action='store_false', default=True, help="random start from any state")
 parser.add_argument("--iql", action='store_true', default=False)
 parser.add_argument("--network", action='store_true', default=False)
 parser.add_argument("--weight", type=float, default=0.8)
@@ -89,7 +89,7 @@ class qrdqnagent:
         self.target_model = Z_table(n_states, n_actions, N)
         self.eps = eps
         self.gamma = gamma
-        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=network_lr)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=network_lr)
         self.idx = idx
         self.ucb = ucb
         self.weight = weight

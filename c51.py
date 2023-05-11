@@ -36,7 +36,7 @@ parser.add_argument("--ucb", type=float, default=0.85, help="set the upper confi
 parser.add_argument("--verbose", action='store_true', default=False, help="print verbose test process")
 parser.add_argument("--GPU", action="store_true", default=False, help="use cuda core")
 parser.add_argument("--batchsize", type=int, default=100, help="learning batchsize")
-parser.add_argument("--randstart", action='store_true', default=False, help="random start from any state")
+parser.add_argument("--randstart", action='store_false', default=True, help="random start from any state")
 parser.add_argument("--iql", action='store_true', default=False)
 parser.add_argument("--network", action='store_true', default=False)
 parser.add_argument("--weight", type=float, default=0.5)
@@ -64,7 +64,6 @@ class Z_table(nn.Module):
         self.n_actions = n_actions
         self.N = N
         self.Linear = nn.Linear(n_states, N * n_actions, bias=False)
-        nn.init.constant(self.Linear.weight, 0.0)
 
     def forward(self, state):
         par = self.Linear(torch.tensor(state, dtype=torch.float32))
@@ -78,7 +77,6 @@ class Q_table(nn.Module):
         self.n_states = n_states
         self.n_actions = n_actions
         self.Linear = nn.Linear(n_states, n_actions, bias=False)
-        nn.init.constant(self.Linear.weight, 0.0)
 
     def forward(self, state):
         par = self.Linear(torch.tensor(state, dtype=torch.float32))
@@ -739,8 +737,6 @@ def train():
         pi_prev = multi_c51.generate_pi_iql()
         for i in range(max_episode):
             s = env.reset()
-            if i > 2000 and val_list[-1] >= cb and tabel_lr > tl_init * 0.05:
-                tabel_lr *= 0.99
             while True:
                 a = multi_c51.get_joint_iql_action(s)  # 根据dqn来接受现在的状态，得到一个行为
                 actions_v = []
