@@ -5,7 +5,7 @@ import random
 
 def chooce_the_game(number, randstart, determine):
     paths = ["a_mat_model/random_matrix_game_3.pkl", "a_mat_model/random_matrix_game_single.pkl",
-             "a_mat_model/random_matrix_game_single_big.pkl", "a_mat_model/random_matrix_game_single_big_2.pkl"]
+             "a_mat_model/random_matrix_game_single_big.pkl", "a_mat_model/random_matrix_game_single_big_2.pkl", "a_mat_model/random_matrix_game_3_agents_30_states_10_actions.pkl"]
     return make_mat_game_from_file(paths[number], randstart, determine)
 
 
@@ -120,7 +120,7 @@ class MatrixGame:
         self.trans_mat = mat
 
 if __name__ == '__main__':
-    env = chooce_the_game(0, True, True)
+    env = chooce_the_game(-1, True, True)
     # env.make_determine_env()
-    # print(np.min(env.r_mat))
+    print(np.max(env.r_mat))
     print(env.state_num, env.agent_num, env.action_num)

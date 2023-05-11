@@ -1,4 +1,8 @@
 logs/
 .idea/
 .vscode/
+newlogs/
 __pycache__
+scripts.sh
+scripts.txt
+iql.sh

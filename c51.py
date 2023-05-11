@@ -47,8 +47,8 @@ parser.add_argument("--determine", default=False, action='store_true')
 
 args = parser.parse_args()
 # in tabular case state=30, actions=5, agents=3
-tabel_lr = args.Lr
-network_lr = args.Lr
+tl_init = tabel_lr = args.Lr
+nl_init = network_lr = args.Lr
 
 test_flg = False
 
@@ -233,7 +233,7 @@ class C51agent:
         m_prob = torch.FloatTensor(m_prob)
         # print("{} {}".format(m_prob.shape, (-torch.log(z_eval + 1e-8)).shape))
         loss = m_prob * (-torch.log(z_eval + 1e-6))
-        loss = torch.mean(loss)
+        loss = torch.mean(loss) * 1000.0
         self.optimizer.zero_grad()
         #  loss.backward(retain_graph=True)  # 误差反向传播
         loss.backward()
@@ -242,7 +242,6 @@ class C51agent:
         matrix_ = self.model.Linear.weight.clone().detach()
         with torch.no_grad():
             return F.l1_loss(matrix_, matrix)
-        # print('finish')
 
     def train_replay_iql(self, memory, batch_size):
         num_samples = min(batch_size, len(memory))
@@ -735,11 +734,12 @@ def train():
     cb = 17.5
     if args.determine:
         cb = 18.5
+    file = open("{}/result_run{}.txt".format(Folder, run_num), 'a')
     if args.iql:
         pi_prev = multi_c51.generate_pi_iql()
         for i in range(max_episode):
             s = env.reset()
-            if i > 2000 and val_list[-1] >= cb:
+            if i > 2000 and val_list[-1] >= cb and tabel_lr > tl_init * 0.05:
                 tabel_lr *= 0.99
             while True:
                 a = multi_c51.get_joint_iql_action(s)  # 根据dqn来接受现在的状态，得到一个行为
@@ -763,7 +763,6 @@ def train():
                 s = s_  # 现在的状态赋值到下一个状态上去
 
             if i % 100 == 0:
-                file = open("{}/result_run{}.txt".format(Folder, run_num), 'a')
                 print("at episode %d" % i)
                 file.write("at episode %d\n" % i)
                 multi_c51.save_checkpoint(args.path)
@@ -799,7 +798,7 @@ def train():
                     r_list.append(total)
                 ep_r /= test_num
                 print('iql mean reward is {}\nreward:{}'.format(ep_r, r_list))
-                s = 'iql mean reward is {}\nr_list:{}'.format(ep_r, r_list)
+                s = 'iql mean reward is {}\nr_list:{}\n'.format(ep_r, r_list)
                 print('pi_judge is :{}'.format(pi_judge))
                 s += 'pi_judge is :{}\n'.format(pi_judge)
                 pi_judge_list.append(pi_judge)
@@ -834,7 +833,7 @@ def train():
         val_list1 = []
         for i in range(max_episode):
             s = env.reset()
-            if i > 2000 and val_list1[-1] >= cb:
+            if i > 2000 and val_list1[-1] >= cb  and tabel_lr > tl_init * 0.05:
                 tabel_lr *= 0.99
             while True:
                 if args.overlap:
@@ -870,7 +869,6 @@ def train():
                 s = s_  # 现在的状态赋值到下一个状态上去
 
             if i % 100 == 0:
-                file = open("{}/result_run{}.txt".format(Folder, run_num), 'a')
                 print("at episode %d" % i)
                 file.write("at episode %d\n" % i)
                 multi_c51.save_checkpoint(args.path)
@@ -915,7 +913,7 @@ def train():
                     r_list1.append(total)
                 ep_r /= test_num
                 print('iql mean reward is {}\nreward:{}'.format(ep_r, r_list1))
-                s = 'iql mean reward is {}\nreward:{}'.format(ep_r, r_list1)
+                s = 'iql mean reward is {}\nreward:{}\n'.format(ep_r, r_list1)
                 print('pi_judge is :{}'.format(pi_judge))
                 s += 'pi_judge is :{}\n'.format(pi_judge)
                 pi_judge_list.append(pi_judge)
@@ -977,22 +975,22 @@ def train():
                 s = s_  # 现在的状态赋值到下一个状态上去
 
             if i % 100 == 0:
-                file = open("{}/result_run{}.txt".format(Folder, run_num), 'a')
+                
                 print("at episode %d" % i)
                 file.write("at episode %d\n" % i)
-                print("rand peek start")
+                """print("rand peek start")
                 file.write("rand peek start\n")
                 agent = random.randint(0, multi_c51.n_agents - 1)
                 print('peek agent {}'.format(agent))
-                file.write('peek agent {}\n'.format(agent))
+                file.write('peek agent {}\n'.format(agent))"""
                 print('q_judge:{}'.format(q_judge))
                 q_judge_list.append(q_judge)
                 q_judge = 0
-                s = multi_c51.c51agents[agent].rand_peek()
+                """s = multi_c51.c51agents[agent].rand_peek()
                 print(s)
                 file.write(s)
                 print("rand peek end")
-                file.write("rand peek end\n")
+                file.write("rand peek end\n")"""
                 multi_c51.save_checkpoint(args.path)
                 s, r_list, ucb_list = test(multi_c51, args.verbose)
                 file.write(s)
@@ -1044,6 +1042,7 @@ def train():
                 axes.set_title('total mean reward')
                 plt.legend()
                 plt.savefig('{}/result_run{}'.format(Folder,run_num))
+    file.close()
 
 
 def test_agent():
