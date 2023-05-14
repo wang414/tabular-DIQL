@@ -225,11 +225,13 @@ class qrdqnagent:
 
         td_errors = target_sa_quantiles - current_sa_quantiles
         assert td_errors.shape == (batch_size, self.N, self.N)
-
+        Q_prev = self.Q.Linear.weight.clone().detach()
         quantile_huber_loss = calculate_quantile_huber_loss(td_errors, self.tau_hats)
         self.optimizer.zero_grad()
         quantile_huber_loss.backward()
         self.optimizer.step()
+        Q_new = self.Q.Linear.weight.clone().detach()
+        return F.l1_loss(Q_prev, Q_new)
 
 
     def rand_peek(self):
@@ -274,17 +276,11 @@ class qrdqnagent:
     def generate_pi_dis(self):
         with torch.no_grad():
             s = torch.eye(self.n_states)
-            Z = self.model(s) * torch.tensor(self.Z, dtype=torch.float32)
-            Q = Z.sum(dim=2)
+            Z = self.model(s)
+            Q = Z.mean(dim=2)
             pi = Q.argmax(dim=1)
             return pi
 
-    def generate_pi_iql(self):
-        with torch.no_grad():
-            s = torch.eye(self.n_states)
-            Q = self.Q(s)
-            pi = Q.argmax(dim=1)
-            return pi
 
 
 start_time = time.time()
@@ -343,7 +339,7 @@ class Multi_qrdqn:
             agent.update_target_model()
 
     def save_checkpoint(self, folder_name):
-        Folder = 'logs/' + folder_name
+        Folder = 'newlogs/' + folder_name
         if not os.path.exists(Folder):  # 是否存在这个文件夹
             os.makedirs(Folder)
         Folder += '/' + str(self.model_name)
@@ -382,8 +378,7 @@ class Multi_qrdqn:
     def generate_pi_dis(self):
         return [agent.generate_pi_dis() for agent in self.qrdqnagents]
 
-    def generate_pi_iql(self):
-        return [agent.generate_pi_iql() for agent in self.qrdqnagents]
+
 
 
 def test(multi_qrdqn, verbose, mean_reward_list):
@@ -513,6 +508,9 @@ def train():
     flag = False
     file = open("{}/result_run{}.txt".format(Folder, run_num), 'a')
     val_list1 = []
+    q_judge_list = []
+    pi_judge_list = []
+    q_judge = 0
     for i in range(max_episode):
         s = env.reset()
         while True:

@@ -22,6 +22,7 @@ parser.add_argument("--eps", type=float, default=0.33, help="set the epsilon")
 parser.add_argument("--gamma", type=float, default=0.99, help="set the gamma")
 parser.add_argument("--Lr", type=float, default=0.1, help="set the learning rate")
 parser.add_argument("--cap", type=int, default=20000, help="the capability of the memory buffer")
+parser.add_argument("--ma2ql", default=False, action="store_true", help="use ma2ql")
 parser.add_argument("--step", type=int, default=100, help="the frequency of training")
 parser.add_argument("--freq", type=int, default=100, help="the frequency of update the model")
 parser.add_argument("--episode", type=int, default=10000, help="set episode rounds")
@@ -63,7 +64,7 @@ class Agent:
         self.idx = idx
         self.Q = Q_table(n_states, n_actions)
         self.target_Q = Q_table(n_states, n_actions)
-        self.optimizer_Q = torch.optim.Adam(self.Q.parameters(), lr=tabel_lr)
+        self.optimizer_Q = torch.optim.SGD(self.Q.parameters(), lr=tabel_lr)
 
     def save_checkpoint(self, folder):
         torch.save(self.Q.state_dict(), folder + '/iql_agent{}_run{}.pkl'.format(self.idx, run_num))
@@ -94,42 +95,6 @@ class Agent:
     def update_target_model(self):
         self.target_Q.load_state_dict(self.Q.state_dict())
 
-    # def train_replay_iql(self, memory, batch_size):
-    #     num_samples = min(batch_size, len(memory))
-    #     replay_samples = random.sample(memory, num_samples)
-    #     # Project Next State Value Distribution (of optimal action) to Current State
-    #     b_s = [sample['s'] for sample in replay_samples]
-    #     b_r = [sample['r'] for sample in replay_samples]
-    #     b_a = [sample['a'] for sample in replay_samples]
-    #     b_s_ = [sample['s_'] for sample in replay_samples]
-    #     b_s = np.array(b_s)
-    #     b_r = np.array(b_r)
-    #     b_s_ = np.array(b_s_)
-    #     b_a = torch.LongTensor(b_a)
-    #     b_a = b_a[:, self.idx].unsqueeze(1)
-    #     # print('{} {}'.format(self.Q(b_s).shape, b_a[:, self.idx].unsqueeze(1).shape))
-    #     q_eval = self.Q(b_s).gather(1, b_a)  # shape (batch, 1)
-
-    #     # print('original:\n{}\n chosen:\n{}\n index:\n{}'.format(self.Q(b_s), q_eval, b_a[:, self.idx]))
-    #     # print("q_eval shape {}".format(q_eval.dtype))
-    #     q_next = self.Q(b_s_).detach()  # q_next 不进行反向传递误差, 所以 detach
-    #     a_next = q_next.argmax(dim=-1,keepdim=True)
-    #     q_next = self.target_Q(b_s_).detach().gather(1, a_next)
-
-    #     b_r = torch.from_numpy(b_r).type(torch.float32)
-    #     q_target = b_r + self.gamma * q_next  # shape (batch)
-    #     # q_target = q_target[:, None]
-    #     # print("q_target:{}".format(q_target))
-    #     loss = F.mse_loss(q_eval, q_target)
-    #     # print(loss)
-    #     # 计算, 更新 eval net
-    #     Q_prev = self.Q.Linear.weight.clone().detach()
-    #     self.optimizer_Q.zero_grad()
-    #     loss.backward()  # 误差反向传播
-    #     self.optimizer_Q.step()
-    #     Q_new = self.Q.Linear.weight.clone().detach()
-    #     return F.l1_loss(Q_prev, Q_new)
-    
     def train_replay_iql(self, memory, batch_size):
         num_samples = min(batch_size, len(memory))
         replay_samples = random.sample(memory, num_samples)
@@ -251,6 +216,17 @@ class Multi_C51:
         training_time += time.time() - st_time
         return q_judge / self.n_agents
 
+    cur_model=0
+    def train_replay_ma2ql(self):
+        st_time = time.time()
+        q_judge = 0
+        for i in range(self.n_agents):
+            q_judge += self.agents[self.cur_model].train_replay_iql(self.memory, self.batch_size)
+        self.cur_model = (self.cur_model+1)%self.n_agents
+
+        global training_time
+        training_time += time.time() - st_time
+        return q_judge / self.n_agents
 
     def test_iql_opt_action(self, state):
         actions = [agent.test_iql_opt_action(state) for agent in self.agents]
@@ -313,7 +289,10 @@ def train():
             # print((s, a, r, s_, done, t))
 
             if t % time_step == 0:
-                q_judge += multi_c51.train_replay_iql()
+                if args.ma2ql:
+                    q_judge += multi_c51.train_replay_ma2ql()
+                else:
+                    q_judge += multi_c51.train_replay_iql()
             if t % args.freq == 0:
                 multi_c51.update_target_models()
 

@@ -38,7 +38,7 @@ parser.add_argument("--GPU", action="store_true", default=False, help="use cuda 
 parser.add_argument("--batchsize", type=int, default=100, help="learning batchsize")
 parser.add_argument("--randstart", action='store_false', default=True, help="random start from any state")
 parser.add_argument("--iql", action='store_true', default=False)
-parser.add_argument("--network", action='store_true', default=False)
+parser.add_argument("--network", action='store_false', default=True)
 parser.add_argument("--weight", type=float, default=0.5)
 parser.add_argument("--samplenum", type=int, default=10)
 parser.add_argument("--overlap", action='store_true', default=False)
@@ -710,7 +710,7 @@ def train():
     while os.path.exists(os.path.join(Folder, 'run{}'.format(run_num))):
         run_num += 1
     os.makedirs(os.path.join(Folder, 'run{}'.format(run_num)))
-    env = Env.chooce_the_game(args.dataset, args.randstart, args.determine)
+    env = Env.chooce_the_game(args.dataset, True, False)
     multi_c51 = Multi_C51(n_agents=env.agent_num, ucb=args.ucb, n_states=env.state_num, n_actions=env.action_num,
                           N=args.N, v_min=args.vmin, v_max=args.vmax, utf=args.freq, eps=args.eps, gamma=args.gamma,
                           max_memory=args.cap, alpha=args.Lr, batch_size=args.batchsize, model_name=args.modelname)
