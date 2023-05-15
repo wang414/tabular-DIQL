@@ -136,9 +136,9 @@ class qrdqnagent:
         b_s_ = [sample['s_'] for sample in replay_samples]
         b_d = [sample['done'] for sample in replay_samples]
 
-        b_s = torch.tensor(b_s)
+        b_s = torch.tensor(np.array(b_s))
         b_r = torch.tensor(b_r)
-        b_s_ = torch.tensor(b_s_)
+        b_s_ = torch.tensor(np.array(b_s_))
         b_a = torch.LongTensor(b_a)[:,self.idx]
         b_a = b_a.unsqueeze(-1)
         b_d = torch.tensor(b_d, dtype=torch.float32)
@@ -175,10 +175,13 @@ class qrdqnagent:
         td_errors = target_sa_quantiles - current_sa_quantiles
         assert td_errors.shape == (batch_size, self.N, self.N)
 
+        Q_prev = self.model.Linear.weight.clone().detach()
         quantile_huber_loss = calculate_quantile_huber_loss(td_errors, self.tau_hats)
         self.optimizer.zero_grad()
         quantile_huber_loss.backward()
         self.optimizer.step()
+        Q_new = self.model.Linear.weight.clone().detach()
+        return F.l1_loss(Q_prev, Q_new)
 
     def train_replay_iqrdqn(self, memory, batch_size):
         # print("enter here")
@@ -355,17 +358,21 @@ class Multi_qrdqn:
 
     def train_replay_method4(self):
         st_time = time.time()
+        q_judge = 0
         for agent in self.qrdqnagents:
-            agent.train_replay_method4(self.memory, self.batch_size)
+            q_judge += agent.train_replay_method4(self.memory, self.batch_size)
         global training_time
         training_time += time.time() - st_time
+        return q_judge / self.n_agents
 
     def train_replay_iqrdqn(self):
         st_time = time.time()
+        q_judge = 0
         for agent in self.qrdqnagents:
-            agent.train_replay_iqrdqn(self.memory, self.batch_size)
+            q_judge += agent.train_replay_iqrdqn(self.memory, self.batch_size)
         global training_time
         training_time += time.time() - st_time
+        return q_judge / self.n_agents
 
     def test_opt_action(self, state):
         actions = [agent.test_opt_action(state) for agent in self.qrdqnagents]
@@ -511,6 +518,7 @@ def train():
     q_judge_list = []
     pi_judge_list = []
     q_judge = 0
+    pi_prev = agents.generate_pi_dis()
     for i in range(max_episode):
         s = env.reset()
         while True:
@@ -527,9 +535,9 @@ def train():
 
             if t % time_step == 0:
                 if args.method4:
-                    agents.train_replay_method4()
+                    q_judge += agents.train_replay_method4()
                 else:
-                    agents.train_replay_iqrdqn()
+                    q_judge += agents.train_replay_iqrdqn()
 
             if t % args.freq == 0:
                 agents.update_target_models()
@@ -541,9 +549,27 @@ def train():
         if i % 100 == 0:
             print("at episode %d" % i)
             file.write("at episode %d\n" % i)
+            seconds = int((time.time()-start_time)/(i+0.001)*(max_episode-i))
+            hours = seconds // 3600
+            minutes = (seconds % 3600) // 60
+            seconds = seconds % 60
+            print("expected time left: {} hours {}minutes {} seconds".format(hours, minutes, seconds))
             agents.save_checkpoint(args.path)
             s, r_list, ucb_list = test(agents, args.verbose, val_list1)
             file.write(s)
+            print("q_judge:{}".format(q_judge))
+            file.write("q_judge:{}\n".format(q_judge))
+            q_judge_list.append(q_judge)
+            q_judge = 0
+            pi_new = agents.generate_pi_dis()
+            pi_judge = 0
+            for old, new in zip(pi_prev, pi_new):
+                # print("{}, {}".format(old, new))
+                pi_judge += (old != new).sum()
+            pi_prev = pi_new
+            print('pi_judge is :{}'.format(pi_judge))
+            file.write('pi_judge is :{}\n'.format(pi_judge))
+            pi_judge_list.append(pi_judge)
             if not flag:
                 for _ in range(len(r_list)):
                     val_list.append([])
@@ -555,13 +581,25 @@ def train():
             print('-' * 50)
             file.write('-' * 50 + '\n')
             # test(multi_c51, args.verbose)
-            with open('{}/iql_iter_run{}.pkl'.format(Folder, run_num), 'wb') as f:
+            with open('{}/iter_run{}.pkl'.format(Folder, run_num), 'wb') as f:
                 pickle.dump(iter_list, f)
-            with open('{}/iql_val_run{}.pkl'.format(Folder, run_num), 'wb') as f:
+            with open('{}/val_run{}.pkl'.format(Folder, run_num), 'wb') as f:
                 pickle.dump(val_list1, f)
+            with open('{}/pi_judge_run{}.pkl'.format(Folder, run_num), 'wb') as f:
+                pickle.dump(pi_judge_list, f)
+            with open('{}/q_judge_run{}.pkl'.format(Folder, run_num), 'wb') as f:
+                pickle.dump(q_judge_list, f)
             plt.figure(figsize=(16, 16))
             axes = plt.subplot(2, 1, 1)
-            plt.plot(iter_list, val_list1, label='iql')
+            method_s = 'method4' if args.method4 else 'iqrdqn'
+            plt.plot(iter_list, val_list1, label=method_s)
+            axes.set_title(method_s)
+            axes = plt.subplot(2, 2, 3)
+            axes.set_title('z_judge')
+            plt.plot(iter_list, q_judge_list, label='z_judge')
+            axes = plt.subplot(2, 2, 4)
+            axes.set_title('pi_judge')
+            plt.plot(iter_list, pi_judge_list, label='pi_judge')
             plt.savefig(Folder + '/result_run{}'.format(run_num))
             plt.close()
     file.close()
