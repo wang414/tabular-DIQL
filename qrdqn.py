@@ -67,19 +67,6 @@ class Z_table(nn.Module):
         return par
 
 
-class Q_table(nn.Module):
-    def __init__(self, n_states, n_actions):
-        super(Q_table, self).__init__()
-        self.n_states = n_states
-        self.n_actions = n_actions
-        self.Linear = nn.Linear(n_states, n_actions, bias=False)
-        nn.init.constant(self.Linear.weight, 0.0)
-
-    def forward(self, state):
-        par = self.Linear(torch.tensor(state, dtype=torch.float32))
-        return par
-
-
 class qrdqnagent:
     def __init__(self, n_states, n_actions, N, eps, gamma, alpha, idx, ucb, weight):
         self.n_states = n_states
@@ -89,7 +76,7 @@ class qrdqnagent:
         self.target_model = Z_table(n_states, n_actions, N)
         self.eps = eps
         self.gamma = gamma
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=network_lr)
+        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=network_lr)
         self.idx = idx
         self.ucb = ucb
         self.weight = weight
